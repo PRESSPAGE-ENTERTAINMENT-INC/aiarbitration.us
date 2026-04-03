@@ -1,0 +1,314 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiarbitration.us/schema/evidence/v1",
+  "title": "AI Arbitration Evidence Bundle",
+  "type": "object",
+  "required": ["evidence_id", "case", "actor", "source", "artifacts", "chain_of_custody"],
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "description": "Stable, globally unique identifier for this evidence bundle (UUIDv4 or ULID)."
+    },
+
+    "version": {
+      "type": "string",
+      "default": "1.0.0",
+      "description": "Schema version for compatibility and migration."
+    },
+
+    "case": {
+      "type": "object",
+      "required": ["case_id", "jurisdiction"],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "description": "Arbitration case identifier within aiarbitration.us."
+        },
+        "jurisdiction": {
+          "type": "string",
+          "enum": ["US-FEDERAL", "US-STATE", "US-OTHER"],
+          "description": "Primary legal anchor for this dispute."
+        },
+        "jurisdiction_detail": {
+          "type": "string",
+          "description": "Optional detail, e.g., 'US-FL', 'US-NY', or specific forum."
+        },
+        "matter_type": {
+          "type": "string",
+          "enum": ["TELECOM", "MEDIA", "AI-SYSTEM", "CONTRACT", "MIXED", "OTHER"],
+          "description": "High-level classification of the dispute."
+        }
+      }
+    },
+
+    "actor": {
+      "type": "object",
+      "required": ["role", "identity"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["CLAIMANT", "RESPONDENT", "THIRD_PARTY", "SYSTEM"],
+          "description": "Role of the submitting party in the dispute."
+        },
+        "identity": {
+          "type": "object",
+          "required": ["label"],
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "Human-readable identifier (e.g., 'PressPage Entertainment Inc')."
+            },
+            "registration_id": {
+              "type": "string",
+              "description": "Corporate or regulatory registration identifier, if applicable."
+            },
+            "contact_uri": {
+              "type": "string",
+              "format": "uri",
+              "description": "Contact endpoint (mailto:, tel:, https:)."
+            }
+          }
+        }
+      }
+    },
+
+    "source": {
+      "type": "object",
+      "required": ["system_type", "system_id", "time_bounds"],
+      "properties": {
+        "system_type": {
+          "type": "string",
+          "enum": ["TELEPHONY", "WEB", "BACKEND", "CLIENT", "MODEL", "OTHER"],
+          "description": "Originating system class."
+        },
+        "system_id": {
+          "type": "string",
+          "description": "System identifier (e.g., Twilio SID, Telnyx connection ID, internal service name)."
+        },
+        "time_bounds": {
+          "type": "object",
+          "required": ["start", "end"],
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Earliest timestamp covered by this evidence bundle (ISO 8601, UTC)."
+            },
+            "end": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Latest timestamp covered by this evidence bundle (ISO 8601, UTC)."
+            }
+          }
+        },
+        "clock_reference": {
+          "type": "string",
+          "description": "Description of clock source and drift assumptions (e.g., NTP-synced, provider clock)."
+        }
+      }
+    },
+
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "kind", "hash", "encoding"],
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "description": "Unique identifier for this artifact within the bundle."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "LOG_LINE",
+              "LOG_BATCH",
+              "CDR",
+              "AUDIO_TRANSCRIPT",
+              "MODEL_INPUT",
+              "MODEL_OUTPUT",
+              "MODEL_TRACE",
+              "CONFIG_SNAPSHOT",
+              "POLICY_DOCUMENT",
+              "OTHER"
+            ],
+            "description": "Type of artifact."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Primary timestamp associated with this artifact, if applicable."
+          },
+          "hash": {
+            "type": "object",
+            "required": ["algorithm", "value"],
+            "properties": {
+              "algorithm": {
+                "type": "string",
+                "enum": ["SHA256", "SHA512", "BLAKE3", "OTHER"]
+              },
+              "value": {
+                "type": "string",
+                "description": "Hex-encoded digest of the canonical artifact bytes."
+              }
+            }
+          },
+          "encoding": {
+            "type": "string",
+            "enum": ["UTF-8", "BASE64", "BINARY-EXTERNAL", "JSON"],
+            "description": "How the artifact payload is represented."
+          },
+          "payload": {
+            "description": "Inline payload when allowed by size and policy.",
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object" },
+              { "type": "array" },
+              { "type": "null" }
+            ]
+          },
+          "external_ref": {
+            "type": "string",
+            "format": "uri",
+            "description": "Optional URI to retrieve the raw artifact (object storage, evidence vault, etc.)."
+          },
+          "onnx_tensor": {
+            "type": "object",
+            "description": "Optional ONNX-aligned tensor representation (for embeddings, model outputs, etc.).",
+            "required": ["name", "elem_type", "shape"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Logical tensor name (e.g., 'input_ids', 'embedding')."
+              },
+              "elem_type": {
+                "type": "string",
+                "enum": [
+                  "FLOAT",
+                  "UINT8",
+                  "INT8",
+                  "UINT16",
+                  "INT16",
+                  "INT32",
+                  "INT64",
+                  "STRING",
+                  "BOOL",
+                  "FLOAT16",
+                  "DOUBLE",
+                  "UINT32",
+                  "UINT64"
+                ],
+                "description": "ONNX TensorProto.DataType."
+              },
+              "shape": {
+                "type": "array",
+                "items": { "type": "integer", "minimum": -1 },
+                "description": "Tensor dimensions; -1 allowed for unknown/variable."
+              },
+              "data_location": {
+                "type": "string",
+                "enum": ["INLINE", "EXTERNAL"],
+                "default": "INLINE"
+              },
+              "raw_data_base64": {
+                "type": "string",
+                "description": "Base64-encoded raw tensor bytes when INLINE."
+              },
+              "external_data_ref": {
+                "type": "string",
+                "format": "uri",
+                "description": "URI to external tensor data when EXTERNAL."
+              }
+            }
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": ["string", "number", "boolean", "null"]
+            },
+            "description": "Arbitrary key/value labels for filtering and routing."
+          }
+        }
+      }
+    },
+
+    "chain_of_custody": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered record of how this evidence bundle has been handled.",
+      "items": {
+        "type": "object",
+        "required": ["event", "actor", "timestamp"],
+        "properties": {
+          "event": {
+            "type": "string",
+            "enum": [
+              "CAPTURED",
+              "INGESTED",
+              "TRANSFERRED",
+              "VALIDATED",
+              "SEALED",
+              "UNSEALED",
+              "VIEWED",
+              "EXPORTED",
+              "OTHER"
+            ]
+          },
+          "actor": {
+            "type": "string",
+            "description": "System or human responsible for this event (e.g., 'aiarbitration.us-intake', 'PressPage-operator')."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this event occurred (ISO 8601, UTC)."
+          },
+          "signature": {
+            "type": "object",
+            "description": "Optional cryptographic attestation for this event.",
+            "required": ["algorithm", "value"],
+            "properties": {
+              "algorithm": {
+                "type": "string",
+                "enum": ["ED25519", "ECDSA_P256", "RSA_PSS", "OTHER"]
+              },
+              "value": {
+                "type": "string",
+                "description": "Base64-encoded signature over a canonical event representation."
+              },
+              "public_key_ref": {
+                "type": "string",
+                "description": "Reference to the verifying key (KID, JWK URI, etc.)."
+              }
+            }
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional human-readable annotation."
+          }
+        }
+      }
+    },
+
+    "intake": {
+      "type": "object",
+      "description": "Metadata about how this bundle reached aiarbitration.us.",
+      "properties": {
+        "channel": {
+          "type": "string",
+          "enum": ["API", "PORTAL_UPLOAD", "EMAIL", "FILE_TRANSFER", "OTHER"]
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Intake request identifier for cross-correlation with logs."
+        },
+        "received_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when aiarbitration.us received this bundle."
+        }
+      }
+    }
+  }
+}
