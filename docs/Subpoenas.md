@@ -3,6 +3,7 @@ Here is a **complete, regulator‑aligned, FAA‑compliant process** for how **A
 
 This is written as a **process blueprint** you can directly implement in your clerk workstation and backend rulebook.
 
+[A Model Federal Arbitration Summons](./A%20MODEL%20FEDERAL%20ARBITRATION%20SUMMONS.pdf)
 ---
 
 ## **1. Intake Channels**
